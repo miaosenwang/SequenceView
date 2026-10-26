@@ -1,0 +1,24 @@
+# Build output & binary artifacts
+build/
+*.app
+/SequenceView
+
+# Swift & Xcode artifacts
+.build/
+*.xcodeproj
+*.xcworkspace
+*.xcuserdata
+*.swp
+*.o
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Scratch test files
+/tmp/test_runner
