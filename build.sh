@@ -96,6 +96,17 @@ cat << 'EOF' > build/SequenceView.app/Contents/Info.plist
             </array>
         </dict>
     </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.antigravity.sequenceview</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>sequenceview</string>
+            </array>
+        </dict>
+    </array>
     <key>NSServices</key>
     <array>
         <dict>
@@ -106,6 +117,22 @@ cat << 'EOF' > build/SequenceView.app/Contents/Info.plist
             </dict>
             <key>NSMessage</key>
             <string>openInSequenceView</string>
+            <key>NSPortName</key>
+            <string>SequenceView</string>
+            <key>NSSendFileTypes</key>
+            <array>
+                <string>public.folder</string>
+                <string>public.image</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Start from Here in SequenceView</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>startFromHereInSequenceView</string>
             <key>NSPortName</key>
             <string>SequenceView</string>
             <key>NSSendFileTypes</key>
@@ -383,6 +410,251 @@ DOCEOF
     echo "✅ Installed to /Applications and registered Quick Action."
     echo "   ℹ️  Right-click a folder or image in Finder → Quick Actions → 'Open in SequenceView'"
     echo "   ℹ️  Or use: Right-click → Open With → SequenceView"
+
+    # Install Finder Quick Action for "Start from Here in SequenceView"
+    START_WORKFLOW_DIR="$HOME/Library/Services/Start from Here in SequenceView.workflow"
+    echo "⚡️ Installing 'Start from Here' Finder Quick Action..."
+    mkdir -p "$START_WORKFLOW_DIR/Contents"
+
+    cat << 'SFEOF' > "$START_WORKFLOW_DIR/Contents/Info.plist"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Start from Here in SequenceView</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>runWorkflowAsService</string>
+            <key>NSSendFileTypes</key>
+            <array>
+                <string>public.folder</string>
+                <string>public.image</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>
+SFEOF
+
+    cat << 'SFDOCEOF' > "$START_WORKFLOW_DIR/Contents/document.wflow"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>AMApplicationBuild</key>
+    <string>523</string>
+    <key>AMApplicationVersion</key>
+    <string>2.10</string>
+    <key>AMDocumentVersion</key>
+    <string>2</string>
+    <key>actions</key>
+    <array>
+        <dict>
+            <key>action</key>
+            <dict>
+                <key>AMAccepts</key>
+                <dict>
+                    <key>Container</key>
+                    <string>List</string>
+                    <key>Optional</key>
+                    <false/>
+                    <key>Types</key>
+                    <array>
+                        <string>com.apple.cocoa.path</string>
+                    </array>
+                </dict>
+                <key>AMActionVersion</key>
+                <string>2.0.3</string>
+                <key>AMApplication</key>
+                <array>
+                    <string>Automator</string>
+                </array>
+                <key>AMBundleIdentifier</key>
+                <string>com.apple.RunShellScript</string>
+                <key>AMCategory</key>
+                <array>
+                    <string>AMCategoryUtilities</string>
+                </array>
+                <key>AMIconName</key>
+                <string>Automator</string>
+                <key>AMKeywords</key>
+                <array>
+                    <string>Shell</string>
+                    <string>Script</string>
+                </array>
+                <key>AMName</key>
+                <string>Run Shell Script</string>
+                <key>AMProvides</key>
+                <dict>
+                    <key>Container</key>
+                    <string>List</string>
+                    <key>Types</key>
+                    <array>
+                        <string>com.apple.cocoa.path</string>
+                    </array>
+                </dict>
+                <key>AMRequiredResources</key>
+                <array/>
+                <key>ActionBundlePath</key>
+                <string>/System/Library/Automator/Run Shell Script.action</string>
+                <key>ActionName</key>
+                <string>Run Shell Script</string>
+                <key>ActionParameters</key>
+                <dict>
+                    <key>COMMAND_STRING</key>
+                    <string>for f in "$@"; do
+    open "sequenceview://start-from-here?path=$(python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))' "$f")" 2>/dev/null || open -n -a "/Applications/SequenceView.app" --args --start-from-here "$f"
+done</string>
+                    <key>CheckedForUserDefaultShell</key>
+                    <true/>
+                    <key>inputMethod</key>
+                    <integer>1</integer>
+                    <key>shell</key>
+                    <string>/bin/zsh</string>
+                    <key>source</key>
+                    <string></string>
+                </dict>
+                <key>BundleIdentifier</key>
+                <string>com.apple.RunShellScript</string>
+                <key>CFBundleVersion</key>
+                <string>2.0.3</string>
+                <key>CanShowSelectedItemsWhenRun</key>
+                <false/>
+                <key>CanShowWhenRun</key>
+                <true/>
+                <key>Category</key>
+                <array>
+                    <string>AMCategoryUtilities</string>
+                </array>
+                <key>Class Name</key>
+                <string>RunShellScriptAction</string>
+                <key>IgnoresInput</key>
+                <false/>
+                <key>InputUUID</key>
+                <string>B2B2B2B2-C3C3-D4D4-E5E5-F6F6F6F6F6F6</string>
+                <key>Keywords</key>
+                <array>
+                    <string>Shell</string>
+                    <string>Script</string>
+                </array>
+                <key>ModifiedDate</key>
+                <date>2024-01-01T00:00:00Z</date>
+                <key>Name</key>
+                <string>Run Shell Script</string>
+                <key>OutputUUID</key>
+                <string>E7E7E7E7-F8F8-A9A9-B0B0-C1C1C1C1C1C1</string>
+                <key>UUID</key>
+                <string>87654321-BBBB-CCCC-DDDD-EEEEEEEEEEE2</string>
+                <key>UnlocalizedApplications</key>
+                <array>
+                    <string>Automator</string>
+                </array>
+                <key>arguments</key>
+                <dict>
+                    <key>0</key>
+                    <dict>
+                        <key>default value</key>
+                        <integer>0</integer>
+                        <key>name</key>
+                        <string>inputMethod</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>0</string>
+                    </dict>
+                    <key>1</key>
+                    <dict>
+                        <key>default value</key>
+                        <string></string>
+                        <key>name</key>
+                        <string>source</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>1</string>
+                    </dict>
+                    <key>2</key>
+                    <dict>
+                        <key>default value</key>
+                        <false/>
+                        <key>name</key>
+                        <string>CheckedForUserDefaultShell</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>2</string>
+                    </dict>
+                    <key>3</key>
+                    <dict>
+                        <key>default value</key>
+                        <string></string>
+                        <key>name</key>
+                        <string>COMMAND_STRING</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>3</string>
+                    </dict>
+                    <key>4</key>
+                    <dict>
+                        <key>default value</key>
+                        <string>/bin/zsh</string>
+                        <key>name</key>
+                        <string>shell</string>
+                        <key>required</key>
+                        <string>0</string>
+                        <key>type</key>
+                        <string>0</string>
+                        <key>uuid</key>
+                        <string>4</string>
+                    </dict>
+                </dict>
+                <key>conversionLabel</key>
+                <integer>0</integer>
+                <key>isViewVisible</key>
+                <true/>
+                <key>location</key>
+                <string>529.000000:620.000000</string>
+                <key>nibPath</key>
+                <string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
+            </dict>
+            <key>isViewVisible</key>
+            <true/>
+        </dict>
+    </array>
+    <key>connectors</key>
+    <dict/>
+    <key>workflowMetaData</key>
+    <dict>
+        <key>serviceInputTypeIdentifier</key>
+        <string>com.apple.Automator.fileSystemObject</string>
+        <key>serviceOutputTypeIdentifier</key>
+        <string>com.apple.Automator.nothing</string>
+        <key>serviceProcessesInput</key>
+        <integer>0</integer>
+        <key>workflowTypeIdentifier</key>
+        <string>com.apple.Automator.servicesMenu</string>
+    </dict>
+</dict>
+</plist>
+SFDOCEOF
+
+    echo "✅ Installed 'Start from Here in SequenceView' Quick Action."
+    echo "   ℹ️  Right-click a folder or image in Finder → Quick Actions → 'Start from Here in SequenceView'"
 fi
 
 echo "✅ Successfully built: build/SequenceView.app and ./SequenceView"

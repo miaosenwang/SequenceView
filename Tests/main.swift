@@ -150,4 +150,77 @@ assert(delManager.currentItem == nil, "Current item should be nil when empty")
 try? FileManager.default.removeItem(at: tempDir)
 print("✅ Test 8 Passed: Image deletion and sequence adjustment verified.")
 
+// Test 9: "Start from here" with Folder target
+let sfhFolderManager = ImageSequenceManager()
+let sfhFolderDelegate = TestDelegate()
+sfhFolderManager.delegate = sfhFolderDelegate
+let panoramaDir = testDir.appendingPathComponent("subfolder_panoramas")
+sfhFolderManager.startFromHere(targetURL: panoramaDir)
+
+let sfhTimeout = Date().addingTimeInterval(5.0)
+while !sfhFolderDelegate.didFinish && Date() < sfhTimeout {
+    RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
+}
+
+assert(sfhFolderDelegate.didFinish, "Scan should finish within 5s")
+assert(sfhFolderManager.totalCount == 6, "Expected 6 images loaded from parent folder, got \(sfhFolderManager.totalCount)")
+assert(sfhFolderManager.currentItem?.filename == "03_ultrawide_skyline.jpg", "Expected current item to be first image of folder (03_ultrawide_skyline.jpg), got \(String(describing: sfhFolderManager.currentItem?.filename))")
+assert(sfhFolderManager.currentIndex == 3, "Expected currentIndex 3, got \(sfhFolderManager.currentIndex)")
+assert(sfhFolderManager.next() == true, "next() should advance to next image in folder")
+assert(sfhFolderManager.currentItem?.filename == "04_tall_infographic.png", "Expected 04_tall_infographic.png, got \(String(describing: sfhFolderManager.currentItem?.filename))")
+assert(sfhFolderManager.previous() == true)
+assert(sfhFolderManager.previous() == true, "previous() should be able to navigate to preceding image in parent folder")
+assert(sfhFolderManager.currentItem?.filename == "06_architecture.tiff", "Expected 06_architecture.tiff, got \(String(describing: sfhFolderManager.currentItem?.filename))")
+print("✅ Test 9 Passed: 'Start from here' on a folder loads parent folder and starts at first image of the folder.")
+
+// Test 10: "Start from here" with Image File target
+let sfhFileManager = ImageSequenceManager()
+let sfhFileDelegate = TestDelegate()
+sfhFileManager.delegate = sfhFileDelegate
+let targetFile = testDir.appendingPathComponent("02_square_art.png")
+sfhFileManager.startFromHere(targetURL: targetFile)
+
+let sfhFileTimeout = Date().addingTimeInterval(5.0)
+while !sfhFileDelegate.didFinish && Date() < sfhFileTimeout {
+    RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
+}
+
+assert(sfhFileDelegate.didFinish, "Scan should finish within 5s")
+assert(sfhFileManager.totalCount == 6, "Expected 6 images loaded from parent folder, got \(sfhFileManager.totalCount)")
+assert(sfhFileManager.currentItem?.filename == "02_square_art.png", "Expected current item to be 02_square_art.png, got \(String(describing: sfhFileManager.currentItem?.filename))")
+assert(sfhFileManager.currentIndex == 1, "Expected currentIndex 1, got \(sfhFileManager.currentIndex)")
+print("✅ Test 10 Passed: 'Start from here' on an image file loads parent folder and starts at target image.")
+
+// Test 11: "Start from here" with Nested Folder target
+let sfhNestedManager = ImageSequenceManager()
+let sfhNestedDelegate = TestDelegate()
+sfhNestedManager.delegate = sfhNestedDelegate
+let nestedDir = testDir.appendingPathComponent("subfolder_vertical")
+sfhNestedManager.startFromHere(targetURL: nestedDir)
+
+let sfhNestedTimeout = Date().addingTimeInterval(5.0)
+while !sfhNestedDelegate.didFinish && Date() < sfhNestedTimeout {
+    RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
+}
+
+assert(sfhNestedDelegate.didFinish, "Scan should finish within 5s")
+assert(sfhNestedManager.totalCount == 6, "Expected 6 images loaded from parent folder, got \(sfhNestedManager.totalCount)")
+assert(sfhNestedManager.currentItem?.filename == "05_vertical_comic.jpg", "Expected first nested image (05_vertical_comic.jpg), got \(String(describing: sfhNestedManager.currentItem?.filename))")
+assert(sfhNestedManager.currentIndex == 5, "Expected currentIndex 5, got \(sfhNestedManager.currentIndex)")
+print("✅ Test 11 Passed: 'Start from here' on a nested folder starts at the first image of the nested hierarchy.")
+
+// Test 12: Context Menu Provider on ImageDisplayView
+var menuProviderCalled = false
+let testMenu = NSMenu(title: "Custom Menu")
+testMenu.addItem(withTitle: "Start from Here", action: nil, keyEquivalent: "")
+displayView.contextMenuProvider = { _ in
+    menuProviderCalled = true
+    return testMenu
+}
+let dummyEvent = NSEvent()
+let returnedMenu = displayView.menu(for: dummyEvent)
+assert(menuProviderCalled == true, "ContextMenuProvider should be invoked")
+assert(returnedMenu?.items.first?.title == "Start from Here", "Context menu must have 'Start from Here'")
+print("✅ Test 12 Passed: Right-click context menu provider on ImageDisplayView verified.")
+
 print("🎉 ALL TESTS PASSED SUCCESSFULLY!")

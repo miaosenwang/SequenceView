@@ -26,6 +26,10 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
         imageDisplayView.delegate = self
         hudOverlay.delegate = self
 
+        imageDisplayView.contextMenuProvider = { [weak self] event in
+            return self?.buildContextMenu(for: event)
+        }
+
         setupViews()
         setupTrackingArea()
         setupWindowNotifications()
@@ -461,6 +465,229 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
                 sequenceManager.loadFolder(url: parentDir, initialTargetURL: url)
             }
         }
+    }
+
+    /// Starts image sequence browsing from the parent folder of the specified URL,
+    /// and begins viewing at the specified item (the exact image file or the first image of the folder).
+    public func startFromHere(url: URL) {
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return }
+
+        let parentDir = url.deletingLastPathComponent()
+        sequenceManager.loadFolder(url: parentDir, initialTargetURL: url)
+        hudOverlay.showTransientNotice("📂 Started from \"\(parentDir.lastPathComponent)\"")
+    }
+
+    // MARK: - Context Menu
+    public func buildContextMenu(for event: NSEvent) -> NSMenu {
+        let menu = NSMenu(title: "Context Menu")
+
+        guard let currentItem = sequenceManager.currentItem else {
+            let openItem = NSMenuItem(title: "Open Folder or Image...", action: #selector(contextOpenAction), keyEquivalent: "o")
+            openItem.target = self
+            menu.addItem(openItem)
+            return menu
+        }
+
+        let fileURL = currentItem.url
+        let currentFolder = fileURL.deletingLastPathComponent()
+        let parentFolder = currentFolder.deletingLastPathComponent()
+
+        // 1. "Start from Here"
+        let startFromHereItem = NSMenuItem(
+            title: "Start from Here",
+            action: #selector(contextStartFromHereAction),
+            keyEquivalent: ""
+        )
+        startFromHereItem.target = self
+        startFromHereItem.toolTip = "Start image viewing from the parent folder at this item"
+        menu.addItem(startFromHereItem)
+
+        // 2. If parent folder exists and is distinct from root/filesystem root
+        if parentFolder.path != currentFolder.path && parentFolder.path != "/" {
+            let startParentItem = NSMenuItem(
+                title: "Start from Parent Folder (\(parentFolder.lastPathComponent))",
+                action: #selector(contextStartFromParentFolderAction),
+                keyEquivalent: ""
+            )
+            startParentItem.target = self
+            startParentItem.toolTip = "Browse all images from \"\(parentFolder.lastPathComponent)\" starting at this item"
+            menu.addItem(startParentItem)
+        }
+
+        // 3. If currently browsing a parent folder and this item is in a subfolder:
+        if let root = sequenceManager.rootFolderURL,
+           root.standardizedFileURL.path != currentFolder.standardizedFileURL.path,
+           currentFolder.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path) {
+            let startSubfolderItem = NSMenuItem(
+                title: "Start from Current Subfolder (\(currentFolder.lastPathComponent))",
+                action: #selector(contextStartFromCurrentFolderAction),
+                keyEquivalent: ""
+            )
+            startSubfolderItem.target = self
+            startSubfolderItem.toolTip = "Limit viewing to only \"\(currentFolder.lastPathComponent)\" starting at this item"
+            menu.addItem(startSubfolderItem)
+        }
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Navigation
+        let nextItem = NSMenuItem(title: "Next Image", action: #selector(contextNextAction), keyEquivalent: "")
+        nextItem.target = self
+        nextItem.isEnabled = sequenceManager.hasNext
+        menu.addItem(nextItem)
+
+        let prevItem = NSMenuItem(title: "Previous Image", action: #selector(contextPrevAction), keyEquivalent: "")
+        prevItem.target = self
+        prevItem.isEnabled = sequenceManager.hasPrevious
+        menu.addItem(prevItem)
+
+        let firstItem = NSMenuItem(title: "First Image", action: #selector(contextFirstAction), keyEquivalent: "")
+        firstItem.target = self
+        firstItem.isEnabled = sequenceManager.currentIndex > 0
+        menu.addItem(firstItem)
+
+        let lastItem = NSMenuItem(title: "Last Image", action: #selector(contextLastAction), keyEquivalent: "")
+        lastItem.target = self
+        lastItem.isEnabled = sequenceManager.currentIndex < sequenceManager.totalCount - 1
+        menu.addItem(lastItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // View Modes
+        let fitScreenItem = NSMenuItem(title: "Fit Screen", action: #selector(contextFitScreenAction), keyEquivalent: "")
+        fitScreenItem.target = self
+        fitScreenItem.state = imageDisplayView.mode == .fitScreen ? .on : .off
+        menu.addItem(fitScreenItem)
+
+        let fitWidthItem = NSMenuItem(title: "Fit Width", action: #selector(contextFitWidthAction), keyEquivalent: "")
+        fitWidthItem.target = self
+        fitWidthItem.state = imageDisplayView.mode == .fitWidth ? .on : .off
+        menu.addItem(fitWidthItem)
+
+        let fitHeightItem = NSMenuItem(title: "Fit Height", action: #selector(contextFitHeightAction), keyEquivalent: "")
+        fitHeightItem.target = self
+        fitHeightItem.state = imageDisplayView.mode == .fitHeight ? .on : .off
+        menu.addItem(fitHeightItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let zoomInItem = NSMenuItem(title: "Zoom In (+)", action: #selector(contextZoomInAction), keyEquivalent: "")
+        zoomInItem.target = self
+        menu.addItem(zoomInItem)
+
+        let zoomOutItem = NSMenuItem(title: "Zoom Out (-)", action: #selector(contextZoomOutAction), keyEquivalent: "")
+        zoomOutItem.target = self
+        menu.addItem(zoomOutItem)
+
+        if imageDisplayView.zoomMultiplier != 1.0 {
+            let resetZoomItem = NSMenuItem(title: "Reset Zoom (0)", action: #selector(contextResetZoomAction), keyEquivalent: "")
+            resetZoomItem.target = self
+            menu.addItem(resetZoomItem)
+        }
+
+        let rotateCWItem = NSMenuItem(title: "Rotate Clockwise (90°)", action: #selector(contextRotateCWAction), keyEquivalent: "")
+        rotateCWItem.target = self
+        menu.addItem(rotateCWItem)
+
+        let rotateCCWItem = NSMenuItem(title: "Rotate Counter-Clockwise (90°)", action: #selector(contextRotateCCWAction), keyEquivalent: "")
+        rotateCCWItem.target = self
+        menu.addItem(rotateCCWItem)
+
+        let fsTitle = (view.window?.styleMask.contains(.fullScreen) == true) ? "Exit Full Screen" : "Enter Full Screen"
+        let fullScreenItem = NSMenuItem(title: fsTitle, action: #selector(contextToggleFullScreenAction), keyEquivalent: "")
+        fullScreenItem.target = self
+        menu.addItem(fullScreenItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // File Operations
+        let revealItem = NSMenuItem(title: "Reveal in Finder", action: #selector(contextRevealInFinderAction), keyEquivalent: "")
+        revealItem.target = self
+        menu.addItem(revealItem)
+
+        let copyPathItem = NSMenuItem(title: "Copy File Path", action: #selector(contextCopyPathAction), keyEquivalent: "")
+        copyPathItem.target = self
+        menu.addItem(copyPathItem)
+
+        let openItem = NSMenuItem(title: "Open Folder or Image...", action: #selector(contextOpenAction), keyEquivalent: "")
+        openItem.target = self
+        menu.addItem(openItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let trashItem = NSMenuItem(title: "Move to Trash", action: #selector(contextTrashAction), keyEquivalent: "")
+        trashItem.target = self
+        menu.addItem(trashItem)
+
+        return menu
+    }
+
+    @objc public func contextStartFromHereAction() {
+        startFromHereCurrentAction()
+    }
+
+    public func startFromHereCurrentAction() {
+        guard let currentItem = sequenceManager.currentItem else { return }
+        let fileURL = currentItem.url
+        let currentFolder = fileURL.deletingLastPathComponent()
+
+        // If current sequence is rooted at currentFolder, expand to the parent folder
+        // so all sibling folders/images in the parent are included, starting at currentItem.
+        // Otherwise, start from currentFolder's parent folder.
+        let parentDir: URL
+        if let root = sequenceManager.rootFolderURL,
+           root.standardizedFileURL.path == currentFolder.standardizedFileURL.path {
+            parentDir = currentFolder.deletingLastPathComponent()
+        } else {
+            parentDir = currentFolder.deletingLastPathComponent()
+        }
+
+        sequenceManager.loadFolder(url: parentDir, initialTargetURL: fileURL)
+        hudOverlay.showTransientNotice("📂 Browsing from \"\(parentDir.lastPathComponent)\"")
+    }
+
+    @objc public func contextStartFromParentFolderAction() {
+        guard let currentItem = sequenceManager.currentItem else { return }
+        let currentFolder = currentItem.url.deletingLastPathComponent()
+        let parentDir = currentFolder.deletingLastPathComponent()
+        sequenceManager.loadFolder(url: parentDir, initialTargetURL: currentItem.url)
+        hudOverlay.showTransientNotice("📂 Browsing from \"\(parentDir.lastPathComponent)\"")
+    }
+
+    @objc public func contextStartFromCurrentFolderAction() {
+        guard let currentItem = sequenceManager.currentItem else { return }
+        let currentFolder = currentItem.url.deletingLastPathComponent()
+        sequenceManager.loadFolder(url: currentFolder, initialTargetURL: currentItem.url)
+        hudOverlay.showTransientNotice("📂 Browsing from \"\(currentFolder.lastPathComponent)\"")
+    }
+
+    @objc private func contextNextAction() { sequenceManager.next(); hudOverlay.pingVisibility() }
+    @objc private func contextPrevAction() { sequenceManager.previous(); hudOverlay.pingVisibility() }
+    @objc private func contextFirstAction() { sequenceManager.first(); hudOverlay.pingVisibility() }
+    @objc private func contextLastAction() { sequenceManager.last(); hudOverlay.pingVisibility() }
+    @objc private func contextFitScreenAction() { imageDisplayView.setMode(.fitScreen); updateHUD(); hudOverlay.pingVisibility() }
+    @objc private func contextFitWidthAction() { imageDisplayView.setMode(.fitWidth); updateHUD(); hudOverlay.pingVisibility() }
+    @objc private func contextFitHeightAction() { imageDisplayView.setMode(.fitHeight); updateHUD(); hudOverlay.pingVisibility() }
+    @objc private func contextZoomInAction() { imageDisplayView.zoomIn(); updateHUD(); hudOverlay.pingVisibility() }
+    @objc private func contextZoomOutAction() { imageDisplayView.zoomOut(); updateHUD(); hudOverlay.pingVisibility() }
+    @objc private func contextResetZoomAction() { imageDisplayView.resetZoom(); updateHUD(); hudOverlay.pingVisibility() }
+    @objc private func contextRotateCWAction() { imageDisplayView.rotateClockwise(); hudOverlay.pingVisibility() }
+    @objc private func contextRotateCCWAction() { imageDisplayView.rotateCounterClockwise(); hudOverlay.pingVisibility() }
+    @objc private func contextToggleFullScreenAction() { view.window?.toggleFullScreen(nil) }
+    @objc private func contextOpenAction() { showOpenPanel() }
+    @objc private func contextTrashAction() { deleteCurrentImage() }
+
+    @objc private func contextRevealInFinderAction() {
+        guard let item = sequenceManager.currentItem else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([item.url])
+    }
+
+    @objc private func contextCopyPathAction() {
+        guard let item = sequenceManager.currentItem else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(item.url.path, forType: .string)
+        hudOverlay.showTransientNotice("📋 Copied file path to clipboard")
     }
 
     // MARK: - Help Dialog

@@ -28,6 +28,12 @@ An ultra-fast, native macOS app built with **Swift** and **AppKit** to browse im
   Decodes next and previous images in a background thread with an intelligent LRU memory cache for instant, stutter-free arrow navigation.
 - **Glassmorphic Floating HUD**:
   Displays current file path, dimensions, format, file size, sequence counter (`42 / 128`), and scroll percentage. Automatically fades out after inactivity for distraction-free viewing.
+- **"Start from Here" Context Menu (Finder & In-App)**:
+  Right-click on any image or folder to start viewing as if browsing all images from the parent folder, starting seamlessly at the chosen image or folder (the first image of that folder). Accessible via:
+  - **macOS Finder Context Menu**: Right-click any folder/image → Quick Actions / Services → *"Start from Here in SequenceView"*.
+  - **In-App Right-Click Context Menu**: Right-click anywhere on the image in SequenceView to access *"Start from Here"*, view modes, zoom, rotation, and file operations.
+  - **Menu Bar & Shortcut**: `File` → `Start from Here` or **`⌘ ⇧ S`**.
+  - **CLI**: Launch with `./SequenceView --start-from-here /path/to/folder_or_image` (or `-s`).
 - **Drag & Drop + CLI Integration**:
   Drop any folder or image file directly onto the window or launch from terminal with `./SequenceView /path/to/folder`. Opening a single image automatically indexes its entire folder hierarchy and jumps straight to that image.
 - **Move to Trash with `Del` / `⌫`**:
@@ -41,6 +47,8 @@ An ultra-fast, native macOS app built with **Swift** and **AppKit** to browse im
 | :--- | :--- |
 | **`→`** or **`Space`** | **Next image** in sequence |
 | **`←`** or **`Shift + Space`** | **Previous image** in sequence |
+| **`⌘ + ⇧ + S`** | **Start from Here** (browse from parent folder at current item) |
+| **Right Click** | **Context Menu** (Start from here, View Modes, Zoom, Rotate, Finder) |
 | **`Del`** or **`⌫`** (or `Cmd + ⌫`) | **Move current image to Trash** |
 | **`+`** / **`-`** (or Numpad **`+`** / **`-`**) | **Zoom in / Zoom out** (25% to 1000%) |
 | **`0`** (or Numpad **`0`**) | **Reset zoom** to 100% / Fit |

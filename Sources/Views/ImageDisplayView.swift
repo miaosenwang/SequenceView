@@ -11,19 +11,52 @@ public protocol ImageDisplayViewDelegate: AnyObject {
     func imageDisplayView(_ view: ImageDisplayView, didUpdateScrollProgress progress: CGFloat)
 }
 
+public class TrackingImageView: NSImageView {
+    override public func menu(for event: NSEvent) -> NSMenu? {
+        if let docView = superview, let displayView = docView.superview?.superview as? ImageDisplayView {
+            return displayView.menu(for: event)
+        }
+        return super.menu(for: event)
+    }
+
+    override public func rightMouseDown(with event: NSEvent) {
+        if let docView = superview, let displayView = docView.superview?.superview as? ImageDisplayView {
+            displayView.rightMouseDown(with: event)
+        } else {
+            super.rightMouseDown(with: event)
+        }
+    }
+}
+
 public class ImageDocumentView: NSView {
     override public var isFlipped: Bool { true }
+
+    override public func menu(for event: NSEvent) -> NSMenu? {
+        if let displayView = superview?.superview as? ImageDisplayView {
+            return displayView.menu(for: event)
+        }
+        return super.menu(for: event)
+    }
+
+    override public func rightMouseDown(with event: NSEvent) {
+        if let displayView = superview?.superview as? ImageDisplayView {
+            displayView.rightMouseDown(with: event)
+        } else {
+            super.rightMouseDown(with: event)
+        }
+    }
 }
 
 public class ImageDisplayView: NSView {
     public weak var delegate: ImageDisplayViewDelegate?
+    public var contextMenuProvider: ((NSEvent) -> NSMenu?)?
 
     public private(set) var mode: ViewMode = .fitScreen
     public private(set) var rotationAngle: CGFloat = 0 // in degrees: 0, 90, 180, 270
 
     private let scrollView = NSScrollView()
     private let documentView = ImageDocumentView()
-    private let imageView = NSImageView()
+    private let imageView = TrackingImageView()
 
     private var currentImage: NSImage?
     private var rawImageSize: CGSize = .zero
@@ -100,6 +133,21 @@ public class ImageDisplayView: NSView {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+
+    override public func menu(for event: NSEvent) -> NSMenu? {
+        if let menu = contextMenuProvider?(event) {
+            return menu
+        }
+        return super.menu(for: event)
+    }
+
+    override public func rightMouseDown(with event: NSEvent) {
+        if let menu = self.menu(for: event) {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        } else {
+            super.rightMouseDown(with: event)
+        }
     }
 
     public override func layout() {

@@ -15,15 +15,30 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         // Only create a default empty window if no files were opened during launch
         // (via "Open With", drag-onto-dock, or command-line args)
         if !launchedWithFiles {
-            let wc = createNewWindow()
-
-            // Check if command line passed a path
             let args = CommandLine.arguments
-            if args.count > 1 {
+            var startFromHereFlag = false
+            var targetPath: String?
+
+            var i = 1
+            while i < args.count {
+                let arg = args[i]
+                if arg == "--start-from-here" || arg == "-s" {
+                    startFromHereFlag = true
+                } else if !arg.hasPrefix("-") && targetPath == nil {
+                    targetPath = arg
+                }
+                i += 1
+            }
+
+            let wc = createNewWindow()
+            if let path = targetPath {
                 launchedWithFiles = true
-                let path = args[1]
                 let url = URL(fileURLWithPath: path)
-                wc.openFolder(url: url)
+                if startFromHereFlag {
+                    wc.startFromHere(url: url)
+                } else {
+                    wc.openFolder(url: url)
+                }
             }
         }
 
@@ -41,6 +56,60 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 let wc = createNewWindow()
                 wc.openFolder(url: url)
             }
+        }
+    }
+
+    /// Called by macOS Services / Quick Actions when the user right-clicks a file/folder
+    /// and selects "Start from Here in SequenceView".
+    @objc public func startFromHereInSequenceView(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+        guard let items = pboard.pasteboardItems else { return }
+        for item in items {
+            if let urlString = item.string(forType: .fileURL),
+               let url = URL(string: urlString) {
+                let wc = createNewWindow()
+                wc.startFromHere(url: url)
+            }
+        }
+    }
+
+    // MARK: - URL Scheme Handler (sequenceview://)
+    public func application(_ application: NSApplication, open urls: [URL]) {
+        launchedWithFiles = true
+        for url in urls {
+            if url.scheme == "sequenceview" {
+                handleCustomURL(url)
+            } else if url.isFileURL {
+                let wc: MainWindowController
+                if let active = activeWindowController(),
+                   active.viewerViewController.sequenceManager.totalCount == 0 {
+                    wc = active
+                } else {
+                    wc = createNewWindow()
+                }
+                wc.openFolder(url: url)
+            }
+        }
+    }
+
+    private func handleCustomURL(_ url: URL) {
+        guard let host = url.host,
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+        guard let pathValue = components.queryItems?.first(where: { $0.name == "path" })?.value,
+              !pathValue.isEmpty else { return }
+        let targetURL = URL(fileURLWithPath: pathValue)
+
+        let wc: MainWindowController
+        if let active = activeWindowController(),
+           active.viewerViewController.sequenceManager.totalCount == 0 {
+            wc = active
+        } else {
+            wc = createNewWindow()
+        }
+
+        if host == "start-from-here" {
+            wc.startFromHere(url: targetURL)
+        } else {
+            wc.openFolder(url: targetURL)
         }
     }
 
@@ -133,6 +202,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let fileMenu = NSMenu(title: "File")
         fileMenu.addItem(withTitle: "New Window", action: #selector(newWindowAction), keyEquivalent: "n")
         fileMenu.addItem(withTitle: "Open Folder or Image...", action: #selector(openFileAction), keyEquivalent: "o")
+        let startFromHereItem = NSMenuItem(title: "Start from Here", action: #selector(startFromHereAction), keyEquivalent: "s")
+        startFromHereItem.keyEquivalentModifierMask = [.command, .shift]
+        fileMenu.addItem(startFromHereItem)
         fileMenu.addItem(NSMenuItem.separator())
         let trashItem = NSMenuItem(title: "Move to Trash", action: #selector(deleteImageAction), keyEquivalent: "\u{08}")
         trashItem.keyEquivalentModifierMask = [.command]
@@ -199,6 +271,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openFileAction() {
         activeViewerController()?.showOpenPanel()
+    }
+
+    @objc private func startFromHereAction() {
+        activeViewerController()?.startFromHereCurrentAction()
     }
 
     @objc private func deleteImageAction() {

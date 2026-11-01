@@ -64,6 +64,10 @@ public class MainWindowController: NSWindowController, NSWindowDelegate {
         viewerViewController.openTarget(url: url)
     }
 
+    public func startFromHere(url: URL) {
+        viewerViewController.startFromHere(url: url)
+    }
+
     // MARK: - NSWindowDelegate
     public func windowWillClose(_ notification: Notification) {
         onWindowClose?(self)

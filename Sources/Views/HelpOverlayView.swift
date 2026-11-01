@@ -34,8 +34,8 @@ public class HelpOverlayView: NSView {
         NSLayoutConstraint.activate([
             card.centerXAnchor.constraint(equalTo: centerXAnchor),
             card.centerYAnchor.constraint(equalTo: centerYAnchor),
-            card.widthAnchor.constraint(equalToConstant: 520),
-            card.heightAnchor.constraint(equalToConstant: 575)
+            card.widthAnchor.constraint(equalToConstant: 540),
+            card.heightAnchor.constraint(equalToConstant: 620)
         ])
 
         let mainStack = NSStackView()
@@ -67,6 +67,8 @@ public class HelpOverlayView: NSView {
         let grid = NSGridView(views: [
             [makeKeyBadge("→ / Space"), makeDescLabel("Next image in sequence")],
             [makeKeyBadge("← / ⇧ Space"), makeDescLabel("Previous image in sequence")],
+            [makeKeyBadge("Right Click"), makeDescLabel("Context menu: Start from here, Zoom, Rotate...")],
+            [makeKeyBadge("⌘ ⇧ S"), makeDescLabel("Start from Here (browse parent folder)")],
             [makeKeyBadge("Del / ⌫"), makeDescLabel("Move current image to Trash")],
             [makeKeyBadge("W"), makeDescLabel("Cycle: Fit Screen → Fit Width → Fit Height")],
             [makeKeyBadge("H"), makeDescLabel("Toggle Fit Height mode directly")],

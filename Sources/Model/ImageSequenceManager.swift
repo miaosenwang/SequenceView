@@ -49,6 +49,16 @@ public class ImageSequenceManager {
     }
 
     // MARK: - Scanning
+    /// Loads the parent folder of the specified target URL, and sets the initial viewing
+    /// position to the specified target (the exact image if target is a file, or the
+    /// first image of the folder if target is a directory).
+    public func startFromHere(targetURL: URL) {
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: targetURL.path, isDirectory: &isDir) else { return }
+        let parentDir = targetURL.deletingLastPathComponent()
+        loadFolder(url: parentDir, initialTargetURL: targetURL)
+    }
+
     public func loadFolder(url: URL, initialTargetURL: URL? = nil) {
         // Cancel ongoing scan
         scanWorkItem?.cancel()
@@ -112,12 +122,44 @@ public class ImageSequenceManager {
         DispatchQueue.global(qos: .userInitiated).async(execute: workItem)
     }
 
+    public func findIndex(for targetURL: URL?, in itemList: [ImageItem]) -> Int? {
+        guard let target = targetURL else { return nil }
+        let targetStandardized = target.standardizedFileURL
+        let targetPath = targetStandardized.path
+
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: targetPath, isDirectory: &isDir)
+
+        if exists && isDir.boolValue {
+            // Target is a folder: find the FIRST image inside this folder or any nested subfolder
+            let prefix = targetPath.hasSuffix("/") ? targetPath : targetPath + "/"
+            return itemList.firstIndex { item in
+                item.url.standardizedFileURL.path.hasPrefix(prefix)
+            }
+        } else {
+            // Target is an image file: first try exact match
+            if let idx = itemList.firstIndex(where: { $0.url.standardizedFileURL.path == targetPath }) {
+                return idx
+            }
+            // Fallback: in case target is a folder path without directory flag or trailing slash
+            let prefix = targetPath.hasSuffix("/") ? targetPath : targetPath + "/"
+            if let idx = itemList.firstIndex(where: { $0.url.standardizedFileURL.path.hasPrefix(prefix) }) {
+                return idx
+            }
+        }
+        return nil
+    }
+
     private func applyBatch(urls: [URL], rootURL: URL, initialTargetURL: URL?) {
         let newItems = urls.map { ImageItem(url: $0, rootURL: rootURL) }
         self.items = newItems
         if !self.items.isEmpty && self.currentItem == nil {
-            self.currentIndex = 0
-            self.delegate?.sequenceManager(self, didChangeIndex: self.currentIndex, item: self.items.first)
+            if let target = initialTargetURL, let targetIndex = findIndex(for: target, in: self.items) {
+                self.currentIndex = targetIndex
+            } else {
+                self.currentIndex = 0
+            }
+            self.delegate?.sequenceManager(self, didChangeIndex: self.currentIndex, item: self.currentItem)
             self.preloadNeighbors()
         }
         self.delegate?.sequenceManager(self, didUpdateList: self.items.count)
@@ -128,7 +170,7 @@ public class ImageSequenceManager {
         self.items = existingURLs.map { ImageItem(url: $0, rootURL: rootURL) }
 
         if let target = initialTargetURL,
-           let matchIndex = self.items.firstIndex(where: { $0.url.standardizedFileURL.path == target.standardizedFileURL.path }) {
+           let matchIndex = findIndex(for: target, in: self.items) {
             self.currentIndex = matchIndex
         } else if self.currentIndex >= self.items.count {
             self.currentIndex = max(0, self.items.count - 1)
