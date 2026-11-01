@@ -30,6 +30,8 @@ An ultra-fast, native macOS app built with **Swift** and **AppKit** to browse im
   Displays current file path, dimensions, format, file size, sequence counter (`42 / 128`), and scroll percentage. Automatically fades out after inactivity for distraction-free viewing.
 - **Drag & Drop + CLI Integration**:
   Drop any folder or image file directly onto the window or launch from terminal with `./SequenceView /path/to/folder`. Opening a single image automatically indexes its entire folder hierarchy and jumps straight to that image.
+- **Move to Trash with `Del` / `⌫`**:
+  Press **`Del`** (or **`Delete` / `Backspace`**, or `⌘⌫`) to safely move the current image to the macOS Trash, automatically transitioning to the next image without interrupting your fullscreen session.
 
 ---
 
@@ -39,6 +41,7 @@ An ultra-fast, native macOS app built with **Swift** and **AppKit** to browse im
 | :--- | :--- |
 | **`→`** or **`Space`** | **Next image** in sequence |
 | **`←`** or **`Shift + Space`** | **Previous image** in sequence |
+| **`Del`** or **`⌫`** (or `Cmd + ⌫`) | **Move current image to Trash** |
 | **`+`** / **`-`** (or Numpad **`+`** / **`-`**) | **Zoom in / Zoom out** (25% to 1000%) |
 | **`0`** (or Numpad **`0`**) | **Reset zoom** to 100% / Fit |
 | **Numpad `8` / `2`** | **Scroll up / down** (hold `Shift` for faster scroll) |

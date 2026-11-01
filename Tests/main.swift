@@ -105,4 +105,49 @@ displayView.resetZoom()
 assert(displayView.zoomMultiplier == 1.0, "Reset zoom should return multiplier to 1.0")
 print("✅ Test 7 Passed: Zoom in, zoom out, and reset zoom verified.")
 
+// Test 8: Deletion to Trash and Sequence Adjustment
+let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("seqview_test_\(UUID().uuidString)")
+let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 10, pixelsHigh: 10, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .calibratedRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+let pngData = rep.representation(using: .png, properties: [:])!
+try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+let file1 = tempDir.appendingPathComponent("img1.png")
+let file2 = tempDir.appendingPathComponent("img2.png")
+let file3 = tempDir.appendingPathComponent("img3.png")
+try pngData.write(to: file1)
+try pngData.write(to: file2)
+try pngData.write(to: file3)
+
+let delManager = ImageSequenceManager()
+let delDelegate = TestDelegate()
+delManager.delegate = delDelegate
+delManager.loadFolder(url: tempDir)
+let delTimeout = Date().addingTimeInterval(5.0)
+while !delDelegate.didFinish && Date() < delTimeout {
+    RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
+}
+assert(delManager.totalCount == 3, "Expected 3 temp images, got \(delManager.totalCount)")
+
+// Delete item 0 (img1.png)
+let res1 = delManager.deleteCurrentItem()
+assert(res1.success == true, "Deletion of item 0 should succeed")
+assert(delManager.totalCount == 2, "Count should now be 2")
+assert(delManager.currentIndex == 0, "Index should stay 0 pointing to img2.png")
+assert(delManager.currentItem?.filename == "img2.png", "Current item should now be img2.png")
+assert(!FileManager.default.fileExists(atPath: file1.path), "img1.png should no longer exist in original path (moved to Trash)")
+
+// Delete item 0 again (img2.png)
+let res2 = delManager.deleteCurrentItem()
+assert(res2.success == true, "Deletion of item 1 should succeed")
+assert(delManager.totalCount == 1, "Count should now be 1")
+assert(delManager.currentItem?.filename == "img3.png", "Current item should now be img3.png")
+
+// Delete last remaining item (img3.png)
+let res3 = delManager.deleteCurrentItem()
+assert(res3.success == true, "Deletion of last item should succeed")
+assert(delManager.totalCount == 0, "Count should now be 0")
+assert(delManager.currentItem == nil, "Current item should be nil when empty")
+
+try? FileManager.default.removeItem(at: tempDir)
+print("✅ Test 8 Passed: Image deletion and sequence adjustment verified.")
+
 print("🎉 ALL TESTS PASSED SUCCESSFULLY!")

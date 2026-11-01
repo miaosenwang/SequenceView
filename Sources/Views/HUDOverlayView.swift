@@ -244,12 +244,41 @@ public class HUDOverlayView: NSView {
             nextButton.isEnabled = false
         }
 
-        if zoomMultiplier != 1.0 {
-            let pct = Int(round(zoomMultiplier * 100))
-            modeButton.title = "\(mode.rawValue) (\(pct)%) [0]"
+        self.currentMode = mode
+        self.currentZoom = zoomMultiplier
+        refreshScrollHint()
+    }
+
+    private var transientNotice: String?
+    private var transientNoticeTimer: Timer?
+    private var currentMode: ViewMode = .fitScreen
+    private var currentZoom: CGFloat = 1.0
+
+    public func showTransientNotice(_ message: String, duration: TimeInterval = 2.5) {
+        transientNotice = message
+        scrollHintLabel.stringValue = message
+        pingVisibility()
+
+        transientNoticeTimer?.invalidate()
+        transientNoticeTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            self.transientNotice = nil
+            self.refreshScrollHint()
+        }
+    }
+
+    private func refreshScrollHint() {
+        if let notice = transientNotice {
+            scrollHintLabel.stringValue = notice
+            return
+        }
+
+        if currentZoom != 1.0 {
+            let pct = Int(round(currentZoom * 100))
+            modeButton.title = "\(currentMode.rawValue) (\(pct)%) [0]"
             scrollHintLabel.stringValue = "↕↔ Numpad 8/2/4/6 to scroll • +/- to zoom • 0 to reset"
         } else {
-            switch mode {
+            switch currentMode {
             case .fitScreen:
                 modeButton.title = "Mode: Fit Screen [W]"
                 scrollHintLabel.stringValue = "Fit Screen active • +/- to zoom"
@@ -264,6 +293,7 @@ public class HUDOverlayView: NSView {
     }
 
     public func updateScrollProgress(_ progress: CGFloat) {
+        guard transientNotice == nil else { return }
         let pct = Int(progress * 100)
         if modeButton.title.contains("%") {
             scrollHintLabel.stringValue = "↕↔ Scroll: \(pct)% • Numpad 8/2/4/6"

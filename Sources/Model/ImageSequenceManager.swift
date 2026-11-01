@@ -124,7 +124,8 @@ public class ImageSequenceManager {
     }
 
     private func applyFinalList(sortedURLs: [URL], rootURL: URL, initialTargetURL: URL?) {
-        self.items = sortedURLs.map { ImageItem(url: $0, rootURL: rootURL) }
+        let existingURLs = sortedURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
+        self.items = existingURLs.map { ImageItem(url: $0, rootURL: rootURL) }
 
         if let target = initialTargetURL,
            let matchIndex = self.items.firstIndex(where: { $0.url.standardizedFileURL.path == target.standardizedFileURL.path }) {
@@ -178,6 +179,50 @@ public class ImageSequenceManager {
         currentIndex = items.count - 1
         delegate?.sequenceManager(self, didChangeIndex: currentIndex, item: currentItem)
         preloadNeighbors()
+    }
+
+    // MARK: - Deletion
+    @discardableResult
+    public func deleteCurrentItem() -> (success: Bool, deletedItem: ImageItem?, error: Error?) {
+        return deleteItem(at: currentIndex)
+    }
+
+    @discardableResult
+    public func deleteItem(at index: Int) -> (success: Bool, deletedItem: ImageItem?, error: Error?) {
+        guard !items.isEmpty, index >= 0, index < items.count else {
+            return (false, nil, nil)
+        }
+        let itemToDelete = items[index]
+
+        // 1. Move file to Trash
+        do {
+            try FileManager.default.trashItem(at: itemToDelete.url, resultingItemURL: nil)
+        } catch {
+            return (false, itemToDelete, error)
+        }
+
+        // 2. Invalidate cache
+        let key = itemToDelete.url.path as NSString
+        memoryCache.removeObject(forKey: key)
+
+        // 3. Remove item from list
+        items.remove(at: index)
+
+        // 4. Update currentIndex and notify
+        if items.isEmpty {
+            currentIndex = 0
+            delegate?.sequenceManager(self, didUpdateList: 0)
+            delegate?.sequenceManager(self, didChangeIndex: 0, item: nil)
+        } else {
+            if currentIndex >= items.count {
+                currentIndex = items.count - 1
+            }
+            delegate?.sequenceManager(self, didUpdateList: items.count)
+            delegate?.sequenceManager(self, didChangeIndex: currentIndex, item: currentItem)
+            preloadNeighbors()
+        }
+
+        return (true, itemToDelete, nil)
     }
 
     // MARK: - Image Loading & Cache

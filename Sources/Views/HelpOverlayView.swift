@@ -35,7 +35,7 @@ public class HelpOverlayView: NSView {
             card.centerXAnchor.constraint(equalTo: centerXAnchor),
             card.centerYAnchor.constraint(equalTo: centerYAnchor),
             card.widthAnchor.constraint(equalToConstant: 520),
-            card.heightAnchor.constraint(equalToConstant: 540)
+            card.heightAnchor.constraint(equalToConstant: 575)
         ])
 
         let mainStack = NSStackView()
@@ -67,6 +67,7 @@ public class HelpOverlayView: NSView {
         let grid = NSGridView(views: [
             [makeKeyBadge("→ / Space"), makeDescLabel("Next image in sequence")],
             [makeKeyBadge("← / ⇧ Space"), makeDescLabel("Previous image in sequence")],
+            [makeKeyBadge("Del / ⌫"), makeDescLabel("Move current image to Trash")],
             [makeKeyBadge("W"), makeDescLabel("Cycle: Fit Screen → Fit Width → Fit Height")],
             [makeKeyBadge("H"), makeDescLabel("Toggle Fit Height mode directly")],
             [makeKeyBadge("Numpad 8 / 2"), makeDescLabel("Scroll up / down (hold Shift for faster)")],

@@ -140,6 +140,9 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
 
         if hasImages {
             loadCurrentItemImage()
+        } else {
+            imageDisplayView.setImage(nil)
+            hudOverlay.update(item: nil, index: 0, total: 0, mode: imageDisplayView.mode, dimensions: nil)
         }
     }
 
@@ -385,8 +388,15 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
                 win.toggleFullScreen(nil)
             }
 
+        case 51, 117: // Delete / Backspace (51), Forward Delete (117)
+            deleteCurrentImage()
+
         default:
-            if event.characters == "+" || event.characters == "=" {
+            if let chars = event.charactersIgnoringModifiers,
+               let firstScalar = chars.unicodeScalars.first,
+               firstScalar.value == 0x7F || firstScalar.value == 0xF728 || firstScalar.value == 0x08 {
+                deleteCurrentImage()
+            } else if event.characters == "+" || event.characters == "=" {
                 imageDisplayView.zoomIn()
                 updateHUD()
             } else if event.characters == "-" {
@@ -483,5 +493,18 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
         helpOverlay?.removeFromSuperview()
         helpOverlay = nil
         view.window?.makeFirstResponder(self)
+    }
+
+    // MARK: - Image Deletion
+    public func deleteCurrentImage() {
+        guard helpOverlay == nil else { return }
+        guard let item = sequenceManager.currentItem else { return }
+        let filename = item.filename
+        let result = sequenceManager.deleteCurrentItem()
+        if result.success {
+            hudOverlay.showTransientNotice("🗑 Moved \"\(filename)\" to Trash")
+        } else if let error = result.error {
+            hudOverlay.showTransientNotice("❌ Failed to delete: \(error.localizedDescription)")
+        }
     }
 }

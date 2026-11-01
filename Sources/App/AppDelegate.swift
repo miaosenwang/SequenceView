@@ -134,6 +134,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(withTitle: "New Window", action: #selector(newWindowAction), keyEquivalent: "n")
         fileMenu.addItem(withTitle: "Open Folder or Image...", action: #selector(openFileAction), keyEquivalent: "o")
         fileMenu.addItem(NSMenuItem.separator())
+        let trashItem = NSMenuItem(title: "Move to Trash", action: #selector(deleteImageAction), keyEquivalent: "\u{08}")
+        trashItem.keyEquivalentModifierMask = [.command]
+        fileMenu.addItem(trashItem)
+        fileMenu.addItem(NSMenuItem.separator())
         fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         fileMenuItem.submenu = fileMenu
         mainMenu.addItem(fileMenuItem)
@@ -195,6 +199,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openFileAction() {
         activeViewerController()?.showOpenPanel()
+    }
+
+    @objc private func deleteImageAction() {
+        activeViewerController()?.deleteCurrentImage()
     }
 
     @objc private func toggleFullScreenAction() {
