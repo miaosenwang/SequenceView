@@ -482,54 +482,12 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
     public func buildContextMenu(for event: NSEvent) -> NSMenu {
         let menu = NSMenu(title: "Context Menu")
 
-        guard let currentItem = sequenceManager.currentItem else {
+        guard let _ = sequenceManager.currentItem else {
             let openItem = NSMenuItem(title: "Open Folder or Image...", action: #selector(contextOpenAction), keyEquivalent: "o")
             openItem.target = self
             menu.addItem(openItem)
             return menu
         }
-
-        let fileURL = currentItem.url
-        let currentFolder = fileURL.deletingLastPathComponent()
-        let parentFolder = currentFolder.deletingLastPathComponent()
-
-        // 1. "Start from Here"
-        let startFromHereItem = NSMenuItem(
-            title: "Start from Here",
-            action: #selector(contextStartFromHereAction),
-            keyEquivalent: ""
-        )
-        startFromHereItem.target = self
-        startFromHereItem.toolTip = "Start image viewing from the parent folder at this item"
-        menu.addItem(startFromHereItem)
-
-        // 2. If parent folder exists and is distinct from root/filesystem root
-        if parentFolder.path != currentFolder.path && parentFolder.path != "/" {
-            let startParentItem = NSMenuItem(
-                title: "Start from Parent Folder (\(parentFolder.lastPathComponent))",
-                action: #selector(contextStartFromParentFolderAction),
-                keyEquivalent: ""
-            )
-            startParentItem.target = self
-            startParentItem.toolTip = "Browse all images from \"\(parentFolder.lastPathComponent)\" starting at this item"
-            menu.addItem(startParentItem)
-        }
-
-        // 3. If currently browsing a parent folder and this item is in a subfolder:
-        if let root = sequenceManager.rootFolderURL,
-           root.standardizedFileURL.path != currentFolder.standardizedFileURL.path,
-           currentFolder.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path) {
-            let startSubfolderItem = NSMenuItem(
-                title: "Start from Current Subfolder (\(currentFolder.lastPathComponent))",
-                action: #selector(contextStartFromCurrentFolderAction),
-                keyEquivalent: ""
-            )
-            startSubfolderItem.target = self
-            startSubfolderItem.toolTip = "Limit viewing to only \"\(currentFolder.lastPathComponent)\" starting at this item"
-            menu.addItem(startSubfolderItem)
-        }
-
-        menu.addItem(NSMenuItem.separator())
 
         // Navigation
         let nextItem = NSMenuItem(title: "Next Image", action: #selector(contextNextAction), keyEquivalent: "")
@@ -623,10 +581,6 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
         return menu
     }
 
-    @objc public func contextStartFromHereAction() {
-        startFromHereCurrentAction()
-    }
-
     public func startFromHereCurrentAction() {
         guard let currentItem = sequenceManager.currentItem else { return }
         let fileURL = currentItem.url
@@ -645,21 +599,6 @@ public class ViewerViewController: NSViewController, ImageSequenceManagerDelegat
 
         sequenceManager.loadFolder(url: parentDir, initialTargetURL: fileURL)
         hudOverlay.showTransientNotice("📂 Browsing from \"\(parentDir.lastPathComponent)\"")
-    }
-
-    @objc public func contextStartFromParentFolderAction() {
-        guard let currentItem = sequenceManager.currentItem else { return }
-        let currentFolder = currentItem.url.deletingLastPathComponent()
-        let parentDir = currentFolder.deletingLastPathComponent()
-        sequenceManager.loadFolder(url: parentDir, initialTargetURL: currentItem.url)
-        hudOverlay.showTransientNotice("📂 Browsing from \"\(parentDir.lastPathComponent)\"")
-    }
-
-    @objc public func contextStartFromCurrentFolderAction() {
-        guard let currentItem = sequenceManager.currentItem else { return }
-        let currentFolder = currentItem.url.deletingLastPathComponent()
-        sequenceManager.loadFolder(url: currentFolder, initialTargetURL: currentItem.url)
-        hudOverlay.showTransientNotice("📂 Browsing from \"\(currentFolder.lastPathComponent)\"")
     }
 
     @objc private func contextNextAction() { sequenceManager.next(); hudOverlay.pingVisibility() }

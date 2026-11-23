@@ -59,19 +59,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Called by macOS Services / Quick Actions when the user right-clicks a file/folder
-    /// and selects "Start from Here in SequenceView".
-    @objc public func startFromHereInSequenceView(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
-        guard let items = pboard.pasteboardItems else { return }
-        for item in items {
-            if let urlString = item.string(forType: .fileURL),
-               let url = URL(string: urlString) {
-                let wc = createNewWindow()
-                wc.startFromHere(url: url)
-            }
-        }
-    }
-
     // MARK: - URL Scheme Handler (sequenceview://)
     public func application(_ application: NSApplication, open urls: [URL]) {
         launchedWithFiles = true

@@ -212,7 +212,7 @@ print("✅ Test 11 Passed: 'Start from here' on a nested folder starts at the fi
 // Test 12: Context Menu Provider on ImageDisplayView
 var menuProviderCalled = false
 let testMenu = NSMenu(title: "Custom Menu")
-testMenu.addItem(withTitle: "Start from Here", action: nil, keyEquivalent: "")
+testMenu.addItem(withTitle: "Next Image", action: nil, keyEquivalent: "")
 displayView.contextMenuProvider = { _ in
     menuProviderCalled = true
     return testMenu
@@ -220,7 +220,7 @@ displayView.contextMenuProvider = { _ in
 let dummyEvent = NSEvent()
 let returnedMenu = displayView.menu(for: dummyEvent)
 assert(menuProviderCalled == true, "ContextMenuProvider should be invoked")
-assert(returnedMenu?.items.first?.title == "Start from Here", "Context menu must have 'Start from Here'")
+assert(returnedMenu?.items.first?.title == "Next Image", "Context menu must have 'Next Image'")
 print("✅ Test 12 Passed: Right-click context menu provider on ImageDisplayView verified.")
 
 print("🎉 ALL TESTS PASSED SUCCESSFULLY!")
