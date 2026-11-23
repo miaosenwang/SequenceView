@@ -119,6 +119,11 @@ cat << 'EOF' > build/SequenceView.app/Contents/Info.plist
             <string>openInSequenceView</string>
             <key>NSPortName</key>
             <string>SequenceView</string>
+            <key>NSRequiredContext</key>
+            <dict>
+                <key>NSApplicationIdentifier</key>
+                <string>com.apple.finder</string>
+            </dict>
             <key>NSSendFileTypes</key>
             <array>
                 <string>public.folder</string>
@@ -135,6 +140,11 @@ cat << 'EOF' > build/SequenceView.app/Contents/Info.plist
             <string>startFromHereInSequenceView</string>
             <key>NSPortName</key>
             <string>SequenceView</string>
+            <key>NSRequiredContext</key>
+            <dict>
+                <key>NSApplicationIdentifier</key>
+                <string>com.apple.finder</string>
+            </dict>
             <key>NSSendFileTypes</key>
             <array>
                 <string>public.folder</string>
@@ -185,6 +195,11 @@ if [ "$1" == "install" ]; then
             </dict>
             <key>NSMessage</key>
             <string>runWorkflowAsService</string>
+            <key>NSRequiredContext</key>
+            <dict>
+                <key>NSApplicationIdentifier</key>
+                <string>com.apple.finder</string>
+            </dict>
             <key>NSSendFileTypes</key>
             <array>
                 <string>public.folder</string>
@@ -394,6 +409,10 @@ done</string>
     <dict/>
     <key>workflowMetaData</key>
     <dict>
+        <key>serviceApplicationBundleID</key>
+        <string>com.apple.finder</string>
+        <key>serviceApplicationPath</key>
+        <string>/System/Library/CoreServices/Finder.app</string>
         <key>serviceInputTypeIdentifier</key>
         <string>com.apple.Automator.fileSystemObject</string>
         <key>serviceOutputTypeIdentifier</key>
@@ -431,6 +450,11 @@ DOCEOF
             </dict>
             <key>NSMessage</key>
             <string>runWorkflowAsService</string>
+            <key>NSRequiredContext</key>
+            <dict>
+                <key>NSApplicationIdentifier</key>
+                <string>com.apple.finder</string>
+            </dict>
             <key>NSSendFileTypes</key>
             <array>
                 <string>public.folder</string>
@@ -640,6 +664,10 @@ done</string>
     <dict/>
     <key>workflowMetaData</key>
     <dict>
+        <key>serviceApplicationBundleID</key>
+        <string>com.apple.finder</string>
+        <key>serviceApplicationPath</key>
+        <string>/System/Library/CoreServices/Finder.app</string>
         <key>serviceInputTypeIdentifier</key>
         <string>com.apple.Automator.fileSystemObject</string>
         <key>serviceOutputTypeIdentifier</key>
@@ -655,6 +683,18 @@ SFDOCEOF
 
     echo "✅ Installed 'Start from Here in SequenceView' Quick Action."
     echo "   ℹ️  Right-click a folder or image in Finder → Quick Actions → 'Start from Here in SequenceView'"
+
+    # Optimize right-click context menu:
+    # macOS automatically elevates services out of the "Services" subfolder directly onto
+    # the main right-click menu when there are 4 or fewer active services for that context.
+    /usr/libexec/PlistBuddy -c "Add :NSServicesStatus dict" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Add :NSServicesStatus:\"com.apple.FolderActionsSetup - Folder Actions Setup - openFilesFromPasteboard\" dict" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set :NSServicesStatus:\"com.apple.FolderActionsSetup - Folder Actions Setup - openFilesFromPasteboard\":enabled_context_menu false" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set :NSServicesStatus:\"com.apple.FolderActionsSetup - Folder Actions Setup - openFilesFromPasteboard\":enabled_services_menu false" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Add :NSServicesStatus:\"com.apple.BluetoothFileExchange - Send File To Bluetooth Device - sendFile\" dict" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set :NSServicesStatus:\"com.apple.BluetoothFileExchange - Send File To Bluetooth Device - sendFile\":enabled_context_menu false" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set :NSServicesStatus:\"com.apple.BluetoothFileExchange - Send File To Bluetooth Device - sendFile\":enabled_services_menu false" "$HOME/Library/Preferences/pbs.plist" 2>/dev/null || true
+    /System/Library/CoreServices/pbs -flush 2>/dev/null || true
 fi
 
 echo "✅ Successfully built: build/SequenceView.app and ./SequenceView"
